@@ -22,3 +22,9 @@ denylist.txt
 *_cache.json
 chromedriver.exe
 .env
+
+# Generated output from a build run, not source.
+post_import_todo.md
+post_import_todo.txt
+video_review.txt
+vela_import.csv
