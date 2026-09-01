@@ -1,0 +1,110 @@
+# Copy to config.yaml and fill in. config.yaml is gitignored; this file is not,
+# so nothing real may ever be written here.
+
+shop:
+  # Vendor is ALWAYS the parent shop name. The model's original designer goes
+  # in the description body as "Creator:", never here. Conflating the two has
+  # caused rework more than once.
+  vendor: Your Shop Name
+  currency_code: EUR
+  default_quantity: "100"
+
+pricing:
+  # The shop applies a fixed multiplier to a supplied base price. Kept here and
+  # applied in exactly one place so the build summary can print base and final
+  # side by side and the arithmetic stays auditable.
+  multiplier: 1.60
+
+listings:
+  # Warn above this many variation combinations. Two axes multiply fast: one
+  # real listing reached 88 before being trimmed to 64. Trim with an `exclude`
+  # list in the products file, never by hand-editing the CSV -- a hand-edited
+  # CSV cannot be rebuilt.
+  variation_ceiling: 70
+
+  # Photo slot order is a merchandising decision, not an implementation detail.
+  # Ten slots total; a group that is absent collapses the gap rather than
+  # leaving an empty slot, because Etsy renders an empty slot as a missing
+  # image. Anything supplied beyond a group's allotted slots is reported as
+  # dropped in the build summary rather than silently discarded.
+  photo_layout:
+    - [ai_scene, 1]        # slot 1
+    - [originals, 2]       # slots 2-3
+    - [infographics, 3]    # slots 4-6
+    - [originals, 3]       # slots 7-9
+    - [cover, 1]           # slot 10
+
+text:
+  # Marketplace boilerplate stripped from titles. Varies by site.
+  title_strip:
+    - 3D Printable
+    - 3D Print
+    - STL
+
+  # Path to the IP denylist -- one term per line, "#" for comments.
+  #
+  # The list itself is NEVER committed. Some rightsholders in this space pursue
+  # takedowns aggressively, including against proxy and lookalike terms rather
+  # than only their own trademarks, so publishing the list would publish a map
+  # of which terms attract enforcement. An absent file is not an error; the
+  # tools run with an empty list.
+  denylist_file: denylist.txt
+
+  # Phrase-level translation, for creators who publish in another language.
+  # Deliberately not machine translation: the output goes straight onto a live
+  # listing, and a deterministic substitution table produces a diff a human can
+  # actually approve. Longest phrases are applied first.
+  glossary: {}
+  #  Drache: Dragon
+  #  Miniatur Set: Miniature Set
+
+collections:
+  # Collection membership follows from TAGS matching the store's existing Smart
+  # Collection rules, with `Tags Command = REPLACE`. It is never written as a
+  # manual collections column -- an earlier version of this pipeline did that
+  # with invented collection names, and both the mechanism and the names were
+  # wrong.
+  #
+  # A rule matches when EVERY one of its tags is present, because Smart
+  # Collection rules are conjunctive. These are examples; the real mapping is
+  # store-specific.
+  - tags: [Infantry, Imperial Guard, Sci-Fi Battles]
+    resolves_to: Sci-Fi Imperial Infantry
+  - tags: [Alien Swarm, High-Tech Aliens, Sci-Fi Battles]
+    resolves_to: Sci-Fi Bug Aliens
+  - tags: [Bases and Basing]
+    resolves_to: Bases and Basing
+
+images:
+  # Shopify's media fetcher is bot-blocked by some CDNs. A build referencing one
+  # of these fails loudly rather than producing a file that imports with missing
+  # media -- a warning in a long log is not seen, and a silent media drop is
+  # found weeks later by a customer.
+  blocked_hosts:
+    - cults3d.com
+    - cdn.cults3d.com
+
+scraping:
+  # Randomised pause between requests.
+  delay_min: 1.5
+  delay_max: 4.0
+
+  # Stop after this many consecutive invalid parses. On one ~1,100-product run
+  # a scraper was blocked from roughly product 380 onward, kept going, and wrote
+  # 700 rows of plausible-looking garbage that only surfaced as missing images
+  # much later. Halting early loses minutes; not halting loses the run and the
+  # trust in its output.
+  halt_after_consecutive_failures: 10
+
+  # Checkpoint every N items. Reruns skip what is already done and state the
+  # skip count on startup.
+  checkpoint_every: 10
+
+browser:
+  # Scripts attach to a Chrome you started yourself, reusing your logged-in
+  # session:
+  #   chrome.exe --remote-debugging-port=9222 --user-data-dir="C:\chrome-debug"
+  remote_debug_port: 9222
+  # Attaching enumerates every open tab, so a browser with dozens of them needs
+  # a generous timeout.
+  attach_timeout: 180

@@ -1,0 +1,12 @@
+# Pinned to what the suite was verified against on Python 3.14.
+PyYAML==6.0.3          # products.yaml input for the listing builder
+openpyxl==3.1.5        # reading Altera/Shopify .xlsx exports
+
+# Only the browser-driven scrapers need Selenium, and they are the one part of
+# this repo with no test coverage (they need a live browser). Install it when
+# you actually run them:
+#     pip install selenium==4.36.0
+# It is left out of the default install so the tested parts of the toolkit
+# stay a two-package dependency.
+
+pytest==9.1.1          # tests only
