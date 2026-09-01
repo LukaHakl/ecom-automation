@@ -132,3 +132,24 @@ class ConsecutiveFailures:
                 "rate limiting looks like -- the server is returning its "
                 "generic page instead of content. Progress is saved; wait a "
                 "while and rerun to continue from here." % self.streak)
+
+
+def pause_if_interactive(message: str = "Press Enter to exit...") -> None:
+    """Hold the console open, but only when a human is watching.
+
+    These scripts are run by double-clicking on Windows, where the window
+    vanishes the instant the process ends and takes the error with it -- so a
+    pause at the end is a requirement, not a nicety.
+
+    It is conditional on a TTY because the unconditional version deadlocks
+    every non-interactive use: a scheduled run, a piped invocation, CI. Waiting
+    forever for a keypress nobody is there to give is a worse failure than the
+    window closing.
+    """
+    import sys
+
+    try:
+        if sys.stdin and sys.stdin.isatty():
+            input(message)
+    except (EOFError, OSError):
+        pass

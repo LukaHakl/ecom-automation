@@ -112,25 +112,72 @@ systematically — on one ~1,100-product run a scraper was blocked from roughly
 product 380 onward, kept going, and wrote 700 rows of plausible-looking garbage
 that only surfaced as missing images much later.
 
-### `converters/` — the model, readers, and reconciliation
+### `converters/` — the model, readers, and four converters
 
 `reconcile.py` compares two catalogues by SKU or by normalised title. Title
 matching produces false positives across creators, so anything below the
 threshold is reported `REVIEW` rather than `MATCHED`.
 
-### `builders/vela_builder.py` — catalogue construction
+`etsy_to_ebay.py` maps an Etsy export onto eBay's bulk template. The template's
+leading `Info` rows are copied through verbatim — eBay rejects a file without
+them — and the header is read from *your* downloaded template rather than
+hardcoded, because eBay revises the column set and a hardcoded 93-column list
+is a time bomb. Columns resolve by name, never by index.
 
-Photo slot ordering as a merchandising decision, variation combination trimming
-declared in the input rather than hand-edited into the CSV afterwards, and a
-build summary printing variations, photos, base price and final price per
-listing so the arithmetic is auditable.
+`image_rows.py` attaches images to products across two exports, and is
+deliberately strict. A permissive earlier version matched 649 of 586 products —
+more matches than products — of which ~160 were wrong. The strict version
+matched 489 and skipped 97, which was the better outcome: a skipped product
+keeps its existing images and nobody notices; a wrong image is a product page
+showing someone else's product. Match order is exact title → override table →
+strict keyword, with **no fallback to loose fuzzy matching**. Every skipped
+title is printed in full.
+
+`collection_builder.py` assigns products to a collection via smart tags
+(preferred) or manual membership, validating out the junk rows real bestseller
+exports contain.
+
+### `builders/` — catalogue construction
+
+`vela_builder.py` handles photo slot ordering as a merchandising decision and
+combination trimming declared in the input rather than hand-edited into the CSV.
+`build_listings.py` is the entry point: products YAML in, Vela CSV out, with
+`--only SKU1,SKU2` because the discipline here is to build two listings and
+import them before running the full set.
+
+`video_map.py` assigns videos to listings by photo-to-video timestamp
+proximity. Session-level guessing — "these were shot the same day, so distribute
+them across that day's listings" — produces wrong assignments and is explicitly
+rejected: a day holds many listings, and nearness *within* the day is the whole
+signal. Genuinely ambiguous videos go to a review file with their candidates
+rather than being assigned.
+
+### `scrapers/` — creator storefronts
+
+One parameterised scraper with a small adapter per site, not one script per
+creator — the previous incarnation had five copies of the same bugs. Three
+interchangeable URL-acquisition modes (live scroll, saved HTML, open tabs), and
+`parse_product` takes **HTML text rather than a driver**, which is what makes
+the parsing testable against fixtures with no browser.
+
+### `shopmanager/` — the three-stage bulk lister
+
+Kept as three scripts on purpose. Stage 1 is slow and occasionally needs
+rerunning; stage 2 is instant and gets rerun constantly while tuning the
+threshold; stage 3 is the only one that writes to a live account. Fusing them
+would mean re-scraping the library every time a number changes.
+
+Stage 3 drives the form from a `tab → field → selector → value` description in
+config rather than hardcoded selectors — the DOM here changes, and the same
+shape recurs on every other marketplace admin. It **saves as draft by default**;
+publishing needs an explicit `--publish`.
 
 ## Usage
 
 ```bash
 pip install -r requirements.txt
 cp config.example.yaml config.yaml     # then edit it
-python -m pytest                       # 173 tests
+python -m pytest                       # 285 tests
 ```
 
 Reconcile two catalogues:
@@ -142,14 +189,18 @@ python -m converters.reconcile --a etsy.csv --b shopify.xlsx --by title --thresh
 
 ## Notes and limitations
 
-**Test coverage is honest about where it stops.** 173 tests cover every pure
+**Test coverage is honest about where it stops.** 285 tests cover every pure
 function: both CSV schemas and their row layouts, the variation rules including
 the stale-leak case, photo column normalisation, text cleaning, the denylist,
 translation, checkpointing, the failure halt, title normalisation, similarity,
-and reconciliation in both modes.
+reconciliation in both modes, eBay template parsing, strict image matching,
+form-plan resolution, adapter parsing against fixture markup, and video
+timestamp mapping.
 
-**The browser automation is untested and marked as such.** `common/browser.py`
-needs a live Chrome, so it is excluded from the suite by design — which is
+**The browser automation is untested and marked as such.** `common/browser.py`,
+`scrapers/creator_store.py`'s acquisition loop, `shopmanager/library_scraper.py`
+and `shopmanager/bulk_creator.py`'s execution path all need a live Chrome, so
+they are excluded from the suite by design — which is
 exactly why it is as thin as it is. Its whole job is to hand back a driver so
 the logic wrapped around it, where the bugs live, can be tested without one.
 Selenium is deliberately not in `requirements.txt`; install it only if you run
