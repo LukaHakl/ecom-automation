@@ -206,11 +206,17 @@ the logic wrapped around it, where the bugs live, can be tested without one.
 Selenium is deliberately not in `requirements.txt`; install it only if you run
 those parts.
 
-**Nothing here has been run against a live marketplace account in this
-repository's history.** The rules encoded in it come from a working system, but
-the code as published has been verified against synthetic fixtures only. Treat
-a first run against a real account as a first run: use the dry-run flags, start
-with two listings, and confirm the import before building 200.
+**Provenance, stated precisely.** These tools ran in production — the scrapers
+against creator catalogues of 1,000+ products, the listing builder against a
+208-listing Etsy catalogue with two variation axes. That original source was
+lost, and this repository is a rebuild from the specifications those runs
+produced. So the *approach* is proven and every rule here was paid for by a real
+failure; the *rebuilt code* is verified against fixtures and the pure logic is
+covered by 285 tests, but it has not itself been re-run against a live account.
+
+Practically: trust the rules, treat a first run as a first run. Use the dry-run
+flags, start with two listings, confirm the import before building 200. That is
+the discipline the original runs taught, and it applies to any rebuild.
 
 **The photo slot layout has one deliberate deviation from the original spec.**
 The written layout described "slots 7–9: original photos 3–6" — three slots for
